@@ -19,6 +19,13 @@ All functions currently raise `NotImplementedError`; replace each with your own 
 
 Swagger UI is automatically generated at `http://localhost:5003/docs` (ReDoc at `/redoc`) when the service is running.
 
+### Approaches
+- Face detection: Localize each face as a bounding box within the image.
+- Face keypoint detection: Extract five canonical landmarks (both eyes, nose tip, and mouth corners).
+- Face alignment: Warp every detected face to a normalized 112×112 crop using the RetinaFace five-point template; the aligned 112×112 image is the output passed downstream. Refer to RetinaFace documentation (or ask ChatGPT) for the reference coordinates.
+- Face embedding: Transform each aligned face into a 512-dimensional feature vector using the RetinaFace embedding model.
+- Similarity scoring: Compare the two embeddings with cosine similarity to obtain the final match score.
+
 ### Submission Guidelines
 - Project due date: **November 16**.
 - Submit your work via a Git pull request named `submit_<studentID>_<name>` (for example, `submit_20230001_AlexKim`).
