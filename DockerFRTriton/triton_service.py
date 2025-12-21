@@ -10,9 +10,6 @@ from io import BytesIO
 from tritonclient import http as httpclient
 
 
-# =========================
-# Triton settings
-# =========================
 TRITON_HTTP_PORT = 8000
 TRITON_GRPC_PORT = 8001
 TRITON_METRICS_PORT = 8002
@@ -24,9 +21,7 @@ MODEL_OUTPUT_NAME = "embedding"
 MODEL_IMAGE_SIZE = (112, 112)
 
 
-# =========================
-# Triton server control
-# =========================
+
 def start_triton_server(model_repo: Path) -> Any:
     """
     Start Triton Inference Server (CPU mode).
@@ -74,9 +69,6 @@ def create_triton_client(url: str):
     return client
 
 
-# =========================
-# Image preprocessing
-# =========================
 def _center_crop_square(img: Image.Image) -> Image.Image:
     w, h = img.size
     s = min(w, h)
@@ -85,9 +77,6 @@ def _center_crop_square(img: Image.Image) -> Image.Image:
     return img.crop((left, top, left + s, top + s))
 
 
-# =========================
-# Inference
-# =========================
 def run_inference(client: Any, image_bytes: bytes) -> np.ndarray:
     """
     Preprocess image and run inference on Triton.
@@ -100,10 +89,8 @@ def run_inference(client: Any, image_bytes: bytes) -> np.ndarray:
 
         x = np.asarray(img, dtype=np.float32)
 
-    # ArcFace standard normalization
-    x = (x - 127.5) / 128.0  # → roughly [-1, 1]
+    x = (x - 127.5) / 128.0
 
-    # HWC → CHW
     x = np.transpose(x, (2, 0, 1))
     x = np.expand_dims(x, axis=0).astype(np.float32)
 
