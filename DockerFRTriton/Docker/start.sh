@@ -23,6 +23,15 @@ if [ "${START_TRITON}" = true ]; then
     --metrics-port="${TRITON_METRICS_PORT}" &
   TRITON_PID=$!
 
+  echo "[start] Waiting for Triton to be ready..."
+    for i in {1..60}; do
+      if curl -sf "http://localhost:${TRITON_HTTP_PORT}/v2/health/ready" >/dev/null; then
+        echo "[start] Triton is ready."
+        break
+      fi
+      sleep 1
+    done
+
   cleanup() {
     echo "[start] Stopping Triton (pid=${TRITON_PID})"
     kill "${TRITON_PID}" 2>/dev/null || true
