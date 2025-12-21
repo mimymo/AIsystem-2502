@@ -9,6 +9,9 @@ COPY . /app
 # Install Python deps for FastAPI wrapper
 RUN pip install --no-cache-dir -r requirements.txt
 
+
+RUN chmod +x /app/Docker/start.sh
+
 # Default ports for Triton (8000/8001/8002) and FastAPI (3000)
 EXPOSE 8000 8001 8002 3000
 
