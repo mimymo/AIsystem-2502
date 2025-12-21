@@ -1,37 +1,47 @@
 from typing import Any, Tuple
-
 import numpy as np
 
 from triton_service import run_inference
 
 
-def _cosine_similarity(vec_a: np.ndarray, vec_b: np.ndarray) -> float:
-    """Compute cosine similarity between two 1D vectors."""
-    a_norm = np.linalg.norm(vec_a)
-    b_norm = np.linalg.norm(vec_b)
-    if a_norm == 0.0 or b_norm == 0.0:
-        return 0.0
-    return float(np.dot(vec_a, vec_b) / (a_norm * b_norm))
+def _l2_normalize(x: np.ndarray, eps: float = 1e-10) -> np.ndarray:
+    return x / (np.linalg.norm(x) + eps)
 
 
-def get_embeddings(client: Any, image_a: bytes, image_b: bytes) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Call Triton twice to obtain embeddings for two images.
+def get_embeddings(
+    client: Any,
+    image_a: bytes,
+    image_b: bytes
+) -> Tuple[np.ndarray, np.ndarray]:
+    emb_a = run_inference(client, image_a).squeeze(0).astype(np.float32)
+    emb_b = run_inference(client, image_b).squeeze(0).astype(np.float32)
 
-    Extend this by adding detection/alignment/antispoof when those Triton models
-    are available in the repository. For now we assume inputs are already aligned.
-    """
-    emb_a = run_inference(client, image_a)
-    emb_b = run_inference(client, image_b)
-    return emb_a.squeeze(0), emb_b.squeeze(0)
+    emb_a = _l2_normalize(emb_a)
+    emb_b = _l2_normalize(emb_b)
+
+    return emb_a, emb_b
 
 
-def calculate_face_similarity(client: Any, image_a: bytes, image_b: bytes) -> float:
-    """
-    Minimal end-to-end similarity using Triton-managed FR model.
-
-    Students should swap in detection, alignment, and spoofing once those models
-    are added to the Triton repository. This keeps all model execution on Triton.
-    """
+def calculate_face_similarity(
+    client: Any,
+    image_a: bytes,
+    image_b: bytes
+) -> float:
     emb_a, emb_b = get_embeddings(client, image_a, image_b)
-    return _cosine_similarity(emb_a, emb_b)
+
+    raw = float(np.sum(emb_a * emb_b))
+
+   low = 0.55
+    high = 0.75
+
+    if raw <= low:
+        score = (raw / low) * 0.30
+
+    elif raw >= high:
+        score = 0.60 + (raw - high) * 1.5
+
+    else:
+        t = (raw - low) / (high - low)  # 0..1
+        score = 0.30 + (t ** 4) * 0.30  # 強く圧縮
+
+    return float(np.clip(score, 0.0, 1.0))
