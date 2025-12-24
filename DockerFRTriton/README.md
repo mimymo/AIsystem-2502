@@ -1,88 +1,91 @@
 # DockerFRTriton (HW2)
 
-A Face Recognition API served by Triton Inference Server (CPU) with a FastAPI wrapper.
+Face Recognition API served by **Triton Inference Server (CPU)** with a **FastAPI** wrapper.
 
-## Overview
+This folder (`DockerFRTriton/`) is the **submission root** for HW2.
 
 * Triton serves ONNX models from `model_repository/`
-* FastAPI exposes the following endpoints:
+* FastAPI exposes `/embedding`, `/face-similarity`, `/health`
+* All neural network inference is executed **exclusively on Triton**
+* Anti-spoofing is **not used** (per instructor note)
 
-  * `/embedding`
-  * `/face-similarity`
-  * `/health`
-* All neural network inference is executed exclusively on Triton
-* Anti-spoofing is NOT used (per instructor note)
 
 
 ## Requirements
 
 * Docker Desktop (Windows / Mac / Linux)
-* Available ports: 3000, 8000, 8001, 8002
+* Available ports: **3000**, **8000**, **8001**, **8002**
 
 
-## Model Repository Structure
 
-```text
-model_repository/
-└── fr_model/
-    ├── 1/
-    │   └── model.onnx
-    └── config.pbtxt
+## Folder Structure
+
+```
+DockerFRTriton/
+├── Docker/
+│   ├── Dockerfile
+│   └── start.sh
+├── model_repository/
+│   └── fr_model/
+│       ├── 1/
+│       │   └── model.onnx
+│       └── config.pbtxt
+├── app.py
+├── pipeline.py
+├── triton_service.py
+├── convert_to_onnx.py
+├── run_fastapi.py
+├── requirements.txt
+└── README.md
 ```
 
-* `fr_model` is an ArcFace-based face recognition backbone exported to ONNX
-* The model is served on CPU using the Triton ONNX Runtime backend
+> **Note:**
+> All paths in this README are relative to the `DockerFRTriton/` directory.
+
+
+
+## Model Repository
+
+* `fr_model` is an **ArcFace-based face recognition backbone** exported to ONNX
+* The model is served on **CPU** using Triton **ONNX Runtime backend**
+* Embedding dimension: **512**
+
 
 
 ## API Endpoints
 
 ### `POST /embedding`
 
-Returns a 512-dimensional face embedding for a single input image.
+Returns a **512-D face embedding** for a single input image.
 
 ### `POST /face-similarity`
 
-Returns a similarity score in the range [0, 1] for two input face images.
+Returns a **similarity score in [0, 1]** for two input face images.
 
 ### `GET /health`
 
-Health check endpoint for the API server.
+Health check endpoint.
 
 
-## Similarity Calibration (Important)
 
-The face recognition model outputs L2-normalized embeddings.
-Similarity is computed using cosine similarity between embeddings.
+## Similarity Computation
 
-In practice, raw cosine similarity scores between different identities
-(particularly same-gender pairs) can be relatively high when using a
-lightweight ArcFace model on unconstrained images.
+* The FR model outputs **L2-normalized embeddings**
+* Raw **cosine similarity** is computed between embeddings
+* A **lightweight calibration layer** is applied to improve separation
+  between same-person and different-person pairs
 
-To achieve clearer separation between same-person and different-person pairs,
-a lightweight score calibration layer is applied on top of the raw cosine similarity.
-
-* This calibration:
-
-  * Preserves ranking
-  * Improves decision margins
-  * Reflects common practice in real-world face recognition systems
-
-Note:
 All neural network inference (embedding extraction) is still performed
-entirely by Triton Inference Server.
+**entirely by Triton Inference Server**.
+
 
 
 ## Run with Docker
 
-### Build the image
+From inside the `DockerFRTriton/` directory:
 
 ```bash
 docker build -t fr-triton -f Docker/Dockerfile .
-```
-
-### Run the container
-
-```bash
 docker run --rm \
   -p 3000:3000 \
   -p 8000:8000 \
@@ -93,17 +96,19 @@ docker run --rm \
 ```
 
 
-## API Documentation (Swagger)
 
-After the container is running, access:
+## Swagger UI
 
 ```
 http://localhost:3000/docs
 ```
 
 
+
 ## Notes
 
-* Triton runs on CPU only (GPU is not required)
-* FastAPI acts as a thin wrapper and does not execute any model locally
-* Calibration logic is applied only at the similarity score level
+* Triton runs on **CPU only** (GPU not required)
+* FastAPI acts as a **thin wrapper** and does not run models locally
+* All model inference is handled by Triton
+* Calibration logic is applied only at the **similarity score level**
+
